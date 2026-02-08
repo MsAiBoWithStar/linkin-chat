@@ -1,0 +1,516 @@
+/* 聊天窗口 - 美化版 */
+.chat-header {
+  padding: 16px 24px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-light);
+  box-shadow: var(--shadow);
+  flex-shrink: 0;
+}
+
+.chat-header .title {
+  font-weight: 600;
+  font-size: 1.05rem;
+  color: var(--text);
+  letter-spacing: 0.3px;
+}
+
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--bg);
+  min-height: 0;
+}
+
+.messages::-webkit-scrollbar {
+  width: 6px;
+}
+
+.messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.messages::-webkit-scrollbar-thumb {
+  background: #D1D5DB;
+  border-radius: 3px;
+}
+
+.messages::-webkit-scrollbar-thumb:hover {
+  background: #9CA3AF;
+}
+
+/* 消息组 - 包含头像和消息 */
+.msg-group {
+  display: flex;
+  margin-bottom: 16px;
+  gap: 8px;
+  animation: fadeIn 0.3s ease;
+}
+
+.msg-group.self {
+  flex-direction: row-reverse;
+}
+
+.msg-group.other {
+  flex-direction: row;
+}
+
+.msg-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex-shrink: 0;
+  padding-top: 4px;
+}
+
+.msg-header.hidden-avatar .avatar-mini,
+.msg-header.hidden-avatar .avatar-mini-placeholder {
+  visibility: hidden;
+}
+
+.avatar-invisible {
+  visibility: hidden;
+}
+
+.msg-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.msg-group.self .msg-body {
+  align-items: flex-end;
+}
+
+.msg-group.other .msg-body {
+  align-items: flex-start;
+}
+
+.avatar-mini {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+  background-color: #E5E7EB;
+  display: inline-block;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.avatar-mini-placeholder {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.msg-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.sender-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.time-small {
+  font-size: 0.7rem;
+  color: #999;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.bubble {
+  max-width: 500px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  position: relative;
+  display: inline-block;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.bubble.self {
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  color: #fff;
+  border-bottom-right-radius: 4px;
+  box-shadow: 0 2px 8px rgba(58, 175, 169, 0.3);
+}
+
+.bubble.other {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  border-bottom-left-radius: 4px;
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+.bubble .sender {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 6px;
+}
+
+.bubble.self .sender {
+  -webkit-text-fill-color: rgba(255,255,255,0.9);
+  background: transparent;
+}
+
+.bubble .content {
+  white-space: pre-wrap;
+  line-height: 1.5;
+  font-size: 0.95rem;
+  margin: 0;
+  text-align: left;
+}
+
+.text-message {
+  white-space: pre-wrap;
+  text-align: left;
+}
+
+.bubble .time {
+  display: block;
+  font-size: 0.75rem;
+  opacity: 0.7;
+  margin-top: 6px;
+  font-weight: 500;
+}
+
+.msg-time {
+  display: none;
+}
+
+/* 时间分隔线 */
+.time-separator {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+  user-select: none;
+}
+
+.time-separator::before,
+.time-separator::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.time-text {
+  font-size: 0.75rem;
+  color: #999;
+  white-space: nowrap;
+  padding: 2px 8px;
+  background: rgba(0,0,0,0.03);
+  border-radius: 10px;
+}
+
+.bubble .file-msg {
+  color: inherit;
+  text-decoration: none;
+  font-weight: 500;
+  border-bottom: none;
+  padding-bottom: 0;
+  transition: all 0.2s ease;
+}
+
+.bubble .file-msg:hover {
+  opacity: 0.9;
+}
+
+/* 文件卡片 */
+.file-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 10px;
+  min-width: 200px;
+  max-width: 320px;
+  transition: all 0.2s ease;
+}
+
+
+.file-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.file-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 图片预览卡片 */
+.image-card {
+  position: relative;
+  display: inline-block;
+  border-radius: 12px;
+  overflow: hidden;
+  max-width: 240px;
+  cursor: pointer;
+}
+
+.image-message {
+  max-width: 240px;
+}
+
+.image-preview {
+  display: block;
+  width: 100%;
+  max-height: 240px;
+  border-radius: 12px;
+  object-fit: cover;
+  transition: transform 0.2s ease, filter 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.image-card:hover .image-preview {
+  transform: scale(1.02);
+  filter: brightness(0.85);
+}
+
+.image-actions {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  opacity: 0.85;
+  transition: opacity 0.2s ease;
+  border-radius: 12px;
+}
+
+.image-card:hover .image-actions {
+  opacity: 1;
+}
+
+.image-download-btn {
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  border-radius: 6px;
+  color: #333;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.image-download-btn:hover {
+  background: #fff;
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.bubble.self .file-card {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.file-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.file-info-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.file-name {
+  color: inherit;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.9rem;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.bubble.self .file-name {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.file-name:hover {
+  text-decoration: underline;
+  opacity: 0.9;
+}
+
+.file-download-btn {
+  padding: 6px 8px;
+  min-width: 36px;
+  min-height: 36px;
+  background: rgba(0, 0, 0, 0.08);
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  opacity: 1;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.file-download-btn:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.14);
+  transform: scale(1.1);
+}
+
+.bubble.self .file-download-btn:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.file-download-btn svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+}
+
+.input-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 16px 20px;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border-light);
+  flex-shrink: 0;
+}
+
+.input-bar textarea {
+  flex: 1;
+  padding: 12px 18px;
+  border: 1px solid var(--border-light);
+  border-radius: 24px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  line-height: 1.5;
+  background: #FFFFFF;
+  color: var(--text);
+  resize: none;
+  overflow-y: auto;
+  min-height: 44px;
+  max-height: 120px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input-bar textarea::-webkit-scrollbar {
+  width: 4px;
+}
+
+.input-bar textarea::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.input-bar textarea::-webkit-scrollbar-thumb {
+  background: #D1D5DB;
+  border-radius: 2px;
+}
+
+.input-bar textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.input-bar textarea:focus {
+  outline: none;
+  border-color: var(--border);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.02);
+}
+
+.input-bar .btn {
+  flex-shrink: 0;
+}
+
+.input-bar .hidden-file {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.input-bar .btn-icon {
+  padding: 10px;
+  font-size: 1.2rem;
+  border-radius: 12px;
+  min-width: 40px;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--icon-color);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.input-bar .btn-icon:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.input-bar .btn-send {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+}
+
+.bubble.self .file-msg {
+  color: #fff;
+  opacity: 0.95;
+}

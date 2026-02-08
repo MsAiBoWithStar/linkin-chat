@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LinkIn</title>
+  <link rel="stylesheet" href="/static/css/main.css">
+  <link rel="stylesheet" href="/static/css/chat.css">
+  <link rel="stylesheet" href="/static/css/components.css">
+</head>
+<body>
+  <div id="app" class="layout">
+    <header class="header">
+      <div class="logo">{{ t('app.name') }}</div>
+      <div class="user-area" id="userArea">
+        <template v-if="currentUser">
+          <button type="button" class="header-search-btn" :title="t('header.searchTitle')" @click="showSearchModal = true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <span>{{ t('header.search') }}</span>
+          </button>
+          <div class="lang-switcher" :class="{ open: showLangMenu }">
+            <button type="button" class="lang-switcher-btn" @click="showLangMenu = !showLangMenu" @blur="hideLangMenuDelay">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/></svg>
+              <span>{{ lang === 'zh' ? '中文' : 'EN' }}</span>
+              <svg class="lang-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="lang-dropdown" v-show="showLangMenu">
+              <div class="lang-option" :class="{ active: lang === 'zh' }" @mousedown.prevent="setLanguage('zh'); showLangMenu = false">
+                <span class="lang-option-label">中文</span>
+                <svg v-if="lang === 'zh'" class="lang-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <div class="lang-option" :class="{ active: lang === 'en' }" @mousedown.prevent="setLanguage('en'); showLangMenu = false">
+                <span class="lang-option-label">English</span>
+                <svg v-if="lang === 'en'" class="lang-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+            </div>
+          </div>
+          <div class="user-menu-trigger">
+            <img v-if="currentUser.avatar" :src="avatarUrl(currentUser.avatar)" class="avatar small" :alt="t('common.avatar')" @click="showUserMenu = !showUserMenu">
+            <span v-else class="avatar-placeholder small" @click="showUserMenu = !showUserMenu">{{ (currentUser.nickname || '?')[0] }}</span>
+            <div class="user-menu" v-show="showUserMenu" @click.self="showUserMenu = false">
+              <div class="user-menu-header">
+                <img v-if="currentUser.avatar" :src="avatarUrl(currentUser.avatar)" class="avatar small" :alt="t('common.avatar')" style="width: 40px; height: 40px;">
+                <span v-else class="avatar-placeholder" style="width: 40px; height: 40px;">{{ (currentUser.nickname || '?')[0] }}</span>
+                <div class="user-menu-info">
+                  <span class="user-menu-nickname">{{ currentUser.nickname }}</span>
+                  <span class="user-menu-id">{{ currentUser.link_id }}</span>
+                </div>
+              </div>
+              <button class="user-menu-item" @click="showSettingsModal = true; showUserMenu = false">
+                <span>⚙️</span>
+                <span>{{ t('header.profile') }}</span>
+              </button>
+              <div class="user-menu-divider"></div>
+              <button class="user-menu-item" @click="logout">
+                <span>🚪</span>
+                <span>{{ t('header.logout') }}</span>
+              </button>
+            </div>
+          </div>
+        </template>
+      </div>
+    </header>
+
+    <main class="main" v-show="currentUser">
+      <aside class="sidebar">
+        <nav class="nav-tabs">
+          <button :class="['tab', { active: leftTab === 'chats' }]" @click="leftTab = 'chats'">{{ t('nav.messages') }}</button>
+          <button :class="['tab', { active: leftTab === 'friends' }]" @click="leftTab = 'friends'">{{ t('nav.friends') }}</button>
+          <button :class="['tab', { active: leftTab === 'groups' }]" @click="leftTab = 'groups'">{{ t('nav.groups') }}</button>
+        </nav>
+        <div class="list-panel" v-show="leftTab === 'chats'">
+          <div class="list-item" v-for="c in chatList" :key="c.key" :class="{ active: currentChat && currentChat.key === c.key }" @click="openChat(c)">
+            <span v-if="c.avatar" class="avatar small" :style="{ backgroundImage: 'url(' + avatarUrl(c.avatar) + ')' }"></span>
+            <span v-else class="avatar-placeholder small">{{ (c.name || '?')[0] }}</span>
+            <div class="info">
+              <span class="name">{{ c.name }}</span>
+              <span class="badge unread" v-if="c.unread > 0">{{ c.unread > 99 ? '99+' : c.unread }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="list-panel" v-show="leftTab === 'friends'">
+          <button class="btn btn-block" @click="showAddFriend = true; searchKeyword = ''; friendSearchResults = []; friendSearchQueried = false">{{ t('friends.add') }}</button>
+          <div class="friend-card" v-for="f in friends" :key="f.id">
+            <div class="friend-card-content" @click="openChat({ type: 'user', id: f.id, name: f.nickname + '(' + f.link_id + ')', avatar: f.avatar })">
+              <span v-if="f.avatar" class="avatar small" :style="{ backgroundImage: 'url(' + avatarUrl(f.avatar) + ')' }"></span>
+              <span v-else class="avatar-placeholder small">{{ (f.nickname || '?')[0] }}</span>
+              <div class="friend-info">
+                <span class="friend-line">{{ f.nickname }}</span>
+              </div>
+            </div>
+            <button class="friend-action-btn" @click="openDeleteFriendModal(f)" :title="t('friends.delete')">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h16zM10 11v6M14 11v6"/>
+              </svg>
+              <span>{{ t('friends.delete') }}</span>
+            </button>
+          </div>
+        </div>
+        <div class="list-panel" v-show="leftTab === 'groups'">
+          <button class="btn btn-block" @click="showCreateGroup = true">{{ t('groups.create') }}</button>
+          <div class="list-item" v-for="g in groups" :key="g.id" @click="openChat({ type: 'group', id: g.id, name: g.group_name, avatar: g.group_avatar, owner_id: g.owner_id })">
+            <span v-if="g.group_avatar" class="avatar small" :style="{ backgroundImage: 'url(' + avatarUrl(g.group_avatar) + ')' }"></span>
+            <span v-else class="avatar-placeholder small">{{ t('chat.groupShort') }}</span>
+            <span class="name">{{ g.group_name }}</span>
+          </div>
+        </div>
+      </aside>
+
+      <section class="chat-list">
+        <template v-if="currentChat">
+          <div class="chat-header">
+            <div class="chat-title-row">
+              <span class="title">{{ currentChat.name }}</span>
+              <button type="button" class="chat-close-btn" :title="t('chat.close')" @click="closeChat">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div class="chat-actions" v-if="currentChat.type === 'group'">
+              <button type="button" class="btn btn-ghost btn-sm" @click="openGroupMembers">{{ t('chat.members') }}</button>
+              <button type="button" class="btn btn-ghost btn-sm" @click="openInviteModal">{{ t('chat.invite') }}</button>
+              <button type="button" class="btn btn-ghost btn-sm" @click="openKickModal">{{ t('chat.kick') }}</button>
+              <button type="button" class="btn btn-ghost btn-sm danger" v-if="currentChat.owner_id === currentUser.id" @click="showDissolveModal = true">{{ t('chat.dissolve') }}</button>
+            </div>
+          </div>
+          <div class="messages" ref="messagesEl">
+            <template v-for="item in displayMessages" :key="item._id || item.id">
+              <!-- 时间分隔线 -->
+              <div v-if="item._type === 'time'" class="time-separator">
+                <span class="time-text">{{ formatTime(item.time) }}</span>
+              </div>
+              <!-- 消息 -->
+              <div v-else :class="['msg-group', item.sender_id === currentUser.id ? 'self' : 'other']">
+                <div class="msg-header">
+                  <template v-if="item.sender_id === currentUser.id">
+                    <span v-if="currentUser.avatar" class="avatar-mini" :style="{ backgroundImage: 'url(' + avatarUrl(currentUser.avatar) + ')' }"></span>
+                    <span v-else class="avatar-mini-placeholder">{{ (currentUser.nickname || t('chat.selfShort'))[0] }}</span>
+                  </template>
+                  <template v-else>
+                    <span v-if="item.sender && item.sender.avatar" class="avatar-mini" :style="{ backgroundImage: 'url(' + avatarUrl(item.sender.avatar) + ')' }"></span>
+                    <span v-else-if="item.sender" class="avatar-mini-placeholder">{{ (item.sender.nickname || '?')[0] }}</span>
+                    <span v-else class="avatar-mini-placeholder">?</span>
+                  </template>
+                </div>
+                <div class="msg-body">
+                  <div class="bubble" :class="item.sender_id === currentUser.id ? 'self' : 'other'">
+                    <span class="content text-message" v-if="item.message_type === 'text'">{{ item.content }}</span>
+                    <div v-else-if="isImageFile(item)" class="image-card image-message">
+                      <img class="image-preview" :src="fileDownloadUrl(item)" :alt="t('common.image')" @click="viewImage(item)">
+                      <div class="image-actions">
+                        <button class="image-download-btn" @click.stop="downloadFile(item)">⬇ {{ t('chat.imageDownload') }}</button>
+                      </div>
+                    </div>
+                    <div v-else class="file-card file-message">
+                      <div class="file-main">
+                        <div class="file-icon">📄</div>
+                        <div class="file-info-col">
+                          <a class="file-name" :href="fileDownloadUrl(item)" target="_blank" rel="noopener">{{ item.file_name || item.file_path || t('common.file') }}</a>
+                        </div>
+                      </div>
+                      <div class="file-actions">
+                        <button class="file-download-btn" @click.stop="downloadFile(item)" :title="t('chat.fileDownloadTitle')">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
+          <div class="input-bar">
+            <input type="file" ref="fileInput" class="hidden-file" @change="onFileSelected">
+            <button type="button" class="btn btn-ghost btn-icon" :title="t('chat.sendFile')" @click="$refs.fileInput.click()">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+            </button>
+            <button type="button" class="btn btn-ghost btn-icon" :title="t('chat.sendImage')" @click="$refs.fileInput.click()">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            </button>
+            <textarea v-model="inputText" ref="messageInput" rows="1" :placeholder="t('chat.inputPlaceholder')" @keydown.enter.exact.prevent="sendText" @input="adjustTextareaHeight"></textarea>
+            <button class="btn btn-primary btn-send" @click="sendText" :title="t('chat.sendTitle')">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </div>
+        </template>
+        <div v-else class="welcome">
+          <div class="welcome-icon">💬</div>
+          <div class="welcome-title">{{ t('chat.emptyTitle') }}</div>
+          <div class="welcome-desc">{{ t('chat.emptyDesc') }}</div>
+        </div>
+      </section>
+    </main>
+
+    <div class="welcome-screen" v-show="!currentUser && !showLogin">
+      <div class="welcome-logo">{{ t('app.name') }}</div>
+      <p>{{ t('welcome.title') }}</p>
+      <div class="welcome-features">
+        <div class="welcome-feature">
+          <span class="welcome-feature-icon">💬</span>
+          <span class="welcome-feature-text">{{ t('welcome.feature.chat') }}</span>
+        </div>
+        <div class="welcome-feature">
+          <span class="welcome-feature-icon">📁</span>
+          <span class="welcome-feature-text">{{ t('welcome.feature.file') }}</span>
+        </div>
+        <div class="welcome-feature">
+          <span class="welcome-feature-icon">👥</span>
+          <span class="welcome-feature-text">{{ t('welcome.feature.group') }}</span>
+        </div>
+      </div>
+      <div class="welcome-actions">
+        <button class="btn btn-primary" @click="openRegisterModal">{{ t('welcome.register') }}</button>
+        <button class="btn" @click="openLoginModal">{{ t('welcome.login') }}</button>
+      </div>
+    </div>
+
+    <!-- 注册弹窗 -->
+    <div class="modal" v-show="showRegister" @click.self="showRegister = false">
+      <div class="modal-content">
+        <button class="modal-close-btn" @click="showRegister = false" :title="t('common.close')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <h3>{{ t('register.title') }}</h3>
+        <div class="form-group">
+          <label>{{ t('register.nickname') }}</label>
+          <input v-model="form.nickname" type="text" :placeholder="t('register.nicknamePlaceholder')">
+        </div>
+        <div class="form-group">
+          <label>{{ t('register.linkId') }}</label>
+          <input :value="generatedLinkId" type="text" readonly disabled style="background: var(--border-light); cursor: not-allowed;">
+        </div>
+        <div class="form-group">
+          <label>{{ t('register.password') }}</label>
+          <input v-model="form.password" type="password" :placeholder="t('register.passwordPlaceholder')">
+        </div>
+        <div class="form-group">
+          <label>{{ t('register.confirmPassword') }}</label>
+          <input v-model="form.confirm_password" type="password" :placeholder="t('register.confirmPasswordPlaceholder')">
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-primary" @click="register">{{ t('register.registerBtn') }}</button>
+          <button class="btn btn-ghost" @click="showRegister = false">{{ t('common.cancel') }}</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 登录弹窗 -->
+    <div class="modal" v-show="showLogin" @click.self="showLogin = false">
+      <div class="modal-content">
+        <button class="modal-close-btn" @click="showLogin = false" :title="t('common.close')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <h3>{{ t('login.title') }}</h3>
+        <div class="form-group">
+          <label>{{ t('login.linkId') }}</label>
+          <input v-model="form.link_id" type="text" :placeholder="t('login.linkIdPlaceholder')" maxlength="8">
+        </div>
+        <div class="form-group">
+          <label>{{ t('login.password') }}</label>
+          <input v-model="form.password" type="password" :placeholder="t('login.passwordPlaceholder')">
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-primary" @click="login">{{ t('login.loginBtn') }}</button>
+          <button class="btn btn-ghost" @click="showLogin = false">{{ t('common.cancel') }}</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 添加好友弹窗 -->
+    <div class="modal" v-show="showAddFriend" @click.self="showAddFriend = false">
+      <div class="modal-content">
+        <button class="modal-close-btn" @click="showAddFriend = false" :title="t('common.close')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <h3>{{ t('addFriend.title') }}</h3>
+        <div class="form-group">
+          <label>{{ t('addFriend.keywordLabel') }}</label>
+          <div class="search-input-row">
+            <input v-model="searchKeyword" type="text" :placeholder="t('addFriend.keywordPlaceholder')" @keydown.enter.prevent="searchFriend">
+            <button class="btn btn-primary btn-sm" @click="searchFriend">{{ t('addFriend.search') }}</button>
+          </div>
+        </div>
+        <div v-if="friendSearchResults.length > 0" class="friend-search-results">
+          <div v-for="u in friendSearchResults" :key="u.id" class="friend-search-card">
+            <div class="friend-search-left">
+              <span v-if="u.avatar" class="avatar small" :style="{ backgroundImage: 'url(' + avatarUrl(u.avatar) + ')' }"></span>
+              <span v-else class="avatar-placeholder small">{{ (u.nickname || '?')[0] }}</span>
+              <div class="friend-search-info">
+                <span class="friend-search-line">{{ u.nickname }}({{ u.link_id }})</span>
+              </div>
+            </div>
+            <button class="btn btn-primary btn-sm" @click="addFriendById(u)" :disabled="isFriendAlready(u.id)">
+              {{ isFriendAlready(u.id) ? t('addFriend.alreadyFriend') : t('addFriend.add') }}
+            </button>
+          </div>
+        </div>
+        <p v-else-if="friendSearchQueried" class="muted" style="text-align:center;">{{ t('addFriend.notFound') }}</p>
+      </div>
+    </div>
+
+    <!-- 创建群聊弹窗 -->
+    <div class="modal" v-show="showCreateGroup" @click.self="showCreateGroup = false">
+      <div class="modal-content">
+        <button class="modal-close-btn" @click="showCreateGroup = false" :title="t('common.close')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <h3>{{ t('createGroup.title') }}</h3>
+        <div class="form-group">
+          <label>{{ t('createGroup.nameLabel') }}</label>
+          <input v-model="createGroupName" type="text" :placeholder="t('createGroup.namePlaceholder')">
+        </div>
+        <div class="form-group">
+          <label>{{ t('createGroup.selectFriends') }}</label>
+          <div class="group-member-list">
+            <div v-for="f in friends" :key="f.id" class="group-member-item">
+              <span v-if="f.avatar" class="avatar small" :style="{ backgroundImage: 'url(' + avatarUrl(f.avatar) + ')' }"></span>
+              <span v-else class="avatar-placeholder small">{{ (f.nickname || '?')[0] }}</span>
+              <div class="group-member-info">
+                <span class="group-member-line">{{ f.nickname }}({{ f.link_id }})</span>
+              </div>
+              <button type="button" class="group-member-action" :class="{ active: isGroupMemberSelected(f.id) }" @click="toggleGroupMember(f.id)">
+                {{ isGroupMemberSelected(f.id) ? t('createGroup.memberInGroup') : t('createGroup.inviteToGroup') }}
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-primary" @click="createGroup">{{ t('createGroup.create') }}</button>
+          <button class="btn btn-ghost" @click="showCreateGroup = false">{{ t('common.cancel') }}</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 邀请入群弹窗 -->
+    <div class="modal" v-show="showInviteModal" @click.self="showInviteModal = false">
+      <div class="modal-content">
+        <button class="modal-close-btn" @click="showInviteModal = false" :title="t('common.close')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <h3>{{ t('invite.title') }}</h3>
+        <div class="group-member-list">
+          <div v-for="f in inviteCandidateFriends" :key="f.id" :class="['group-member-item', { selected: inviteSelectedIds.includes(f.id) }]" @click="toggleInviteSelect(f.id)">
+            <span v-if="f.avatar" class="avatar small" :style="{ backgroundImage: 'url(' + avatarUrl(f.avatar) + ')' }"></span>
+            <span v-else class="avatar-placeholder small">{{ (f.nickname || '?')[0] }}</span>
+            <div class="group-member-info">
+              <span class="group-member-line">{{ f.nickname }}({{ f.link_id }})</span>
+            </div>
+            <span class="select-indicator" :class="{ active: inviteSelectedIds.includes(f.id) }">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>
+          </div>
+          <p v-if="inviteCandidateFriends.length === 0" class="muted">{{ t('invite.empty') }}</p>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-primary" @click="confirmInviteSelection">{{ t('invite.confirm') }}</button>
+          <button class="btn btn-ghost" @click="showInviteModal = false">{{ t('common.cancel') }}</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 踢人弹窗 -->
+    <div class="modal" v-show="showKickModal" @click.self="showKickModal = false">
+      <div class="modal-content">
+        <button class="modal-close-btn" @click="showKickModal = false" :title="t('common.close')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <h3>{{ t('kick.title') }}</h3>
+        <div class="group-member-list">
+          <div v-for="m in kickCandidateMembers" :key="m.user_id" :class="['group-member-item', { selected: kickSelectedIds.includes(m.user_id) }]" @click="toggleKickSelect(m.user_id)">
+            <span v-if="m.user && m.user.avatar" class="avatar small" :style="{ backgroundImage: 'url(' + avatarUrl(m.user.avatar) + ')' }"></span>
+            <span v-else class="avatar-placeholder small">{{ (m.user && m.user.nickname ? m.user.nickname[0] : '?') }}</span>
+            <div class="group-member-info">
+              <span class="group-member-line">{{ m.user && (m.user.nickname + '(' + m.user.link_id + ')') }}</span>
+            </div>
+            <span class="role-tag">{{ m.role }}</span>
+            <span class="select-indicator" :class="{ active: kickSelectedIds.includes(m.user_id) }">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>
+          </div>
+          <p v-if="kickCandidateMembers.length === 0" class="muted">{{ t('kick.empty') }}</p>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-danger" @click="confirmKickSelection">{{ t('kick.confirm') }}</button>
+          <button class="btn btn-ghost" @click="showKickModal = false">{{ t('common.cancel') }}</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 群成员弹窗 -->
+    <div class="modal" v-show="showGroupMembers" @click.self="showGroupMembers = false">
+      <div class="modal-content">
+        <button class="modal-close-btn" @click="showGroupMembers = false" :title="t('common.close')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <h3>{{ t('members.title') }}</h3>
+        <div class="group-member-list">
+          <div v-for="m in groupMembers" :key="m.user_id" class="group-member-item">
+            <span v-if="m.user && m.user.avatar" class="avatar small" :style="{ backgroundImage: 'url(' + avatarUrl(m.user.avatar) + ')' }"></span>
+            <span v-else class="avatar-placeholder small">{{ (m.user && m.user.nickname ? m.user.nickname[0] : '?') }}</span>
+            <div class="group-member-info">
+              <span class="group-member-line">{{ m.user ? (m.user.nickname + '(' + m.user.link_id + ')') : t('members.unknown') }}</span>
+            </div>
+            <span class="role-tag">{{ m.role }}</span>
+          </div>
+          <p v-if="groupMembers.length === 0" class="muted">{{ t('members.empty') }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 解散群聊确认弹窗 -->
+    <div class="modal" v-show="showDissolveModal" @click.self="showDissolveModal = false">
+      <div class="modal-content">
+        <button class="modal-close-btn" @click="showDissolveModal = false" :title="t('common.close')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <h3>{{ t('dissolve.title') }}</h3>
+        <p class="modal-text">{{ t('dissolve.message') }}</p>
+        <div class="modal-actions">
+          <button class="btn btn-danger" @click="confirmDissolveGroup">{{ t('dissolve.confirm') }}</button>
+          <button class="btn btn-ghost" @click="showDissolveModal = false">{{ t('common.cancel') }}</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 用户设置弹窗 -->
+    <div class="modal" v-show="showSettingsModal" @click.self="showSettingsModal = false">
+      <div class="modal-content">
+        <h3>{{ t('settings.title') }}</h3>
+        <div class="form-group">
+          <label>{{ t('settings.nickname') }}</label>
+          <input v-model="settingsForm.nickname" type="text" :placeholder="t('settings.nicknamePlaceholder')">
+        </div>
+        <div class="form-group">
+          <label>{{ t('settings.avatar') }}</label>
+          <div style="display: flex; gap: 12px; align-items: center;">
+            <div style="position: relative;">
+              <img v-if="settingsForm.avatar" :src="avatarUrl(settingsForm.avatar)" class="avatar" alt="头像" style="width: 72px; height: 72px; border-radius: 50%;">
+              <span v-else class="avatar-placeholder" style="width: 72px; height: 72px; font-size: 1.5rem;">{{ (settingsForm.nickname || '?')[0] }}</span>
+              <span v-if="avatarUploading" style="position: absolute; bottom: -2px; right: -2px; width: 20px; height: 20px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;">⏳</span>
+              <span v-else-if="avatarUploadSuccess" style="position: absolute; bottom: -2px; right: -2px; width: 20px; height: 20px; border-radius: 50%; background: #34C759; color: white; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;">✓</span>
+            </div>
+            <input type="file" ref="avatarInput" class="hidden-file" accept=".jpg,.jpeg,.png,.gif" @change="onAvatarSelected" style="display: none;">
+            <button class="btn btn-ghost btn-sm" @click="$refs.avatarInput.click()" :disabled="avatarUploading">{{ avatarUploading ? t('settings.uploading') : t('settings.uploadAvatar') }}</button>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-primary" @click="saveSettings">{{ t('settings.save') }}</button>
+          <button class="btn btn-ghost" @click="showSettingsModal = false">{{ t('common.cancel') }}</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 删除好友弹窗 -->
+    <div class="modal" v-show="showDeleteFriendModal" @click.self="showDeleteFriendModal = false">
+      <div class="modal-content">
+        <h3>{{ t('deleteFriend.title') }}</h3>
+        <p v-if="deleteFriendTarget" class="modal-text">{{ t('deleteFriend.message', { name: deleteFriendTarget.nickname }) }}</p>
+        <label class="delete-friend-option">
+          <input type="checkbox" v-model="deleteFriendClearHistory">
+          <span>{{ t('deleteFriend.clearHistory') }}</span>
+        </label>
+        <div class="modal-actions">
+          <button class="btn btn-danger" @click="confirmDeleteFriend">{{ t('deleteFriend.confirm') }}</button>
+          <button class="btn btn-ghost" @click="showDeleteFriendModal = false">{{ t('common.cancel') }}</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 消息搜索弹窗 -->
+    <div class="modal" v-show="showSearchModal" @click.self="showSearchModal = false">
+      <div class="modal-content modal-wide">
+        <button class="modal-close-btn" @click="showSearchModal = false" :title="t('common.close')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <h3>{{ t('search.title') }}</h3>
+        <div class="form-group">
+          <input v-model="searchQuery" type="text" :placeholder="t('search.placeholder')" @keydown.enter.prevent="doSearch">
+        </div>
+        <button class="btn btn-primary" @click="doSearch">{{ t('search.searchBtn') }}</button>
+        <div class="search-results" v-if="searchResults.length > 0">
+          <div v-for="m in searchResults" :key="m.id" class="search-result-item" @click="openChatFromSearch(m)">
+            <span class="search-meta">{{ m.sender && m.sender.nickname }} · {{ m.group_id ? t('search.metaGroup') : t('search.metaPrivate') }} · {{ formatTime(m.created_at) }}</span>
+            <span class="search-content">{{ m.content }}</span>
+          </div>
+        </div>
+        <p v-else-if="searchQueried && searchResults.length === 0" class="muted">{{ t('search.noResult') }}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast 容器 -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

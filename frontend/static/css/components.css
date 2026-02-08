@@ -1,0 +1,64 @@
+/* 通用组件 */
+button:focus,
+input:focus {
+  outline: none;
+}
+
+button {
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.1s ease;
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+input[type="text"],
+input[type="password"],
+textarea {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+input[type="checkbox"] {
+  cursor: pointer;
+}
+
+/* 滚动条 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #D1D5DB;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9CA3AF;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #D1D5DB transparent;
+}
+
+/* 文本选中 */
+::selection {
+  background: rgba(58, 175, 169, 0.2);
+  color: var(--text);
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+  :root {
+    --radius: 8px;
+  }
+  .modal-content {
+    margin: 16px;
+    min-width: calc(100% - 32px);
+  }
+}
